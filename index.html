@@ -388,7 +388,7 @@
       ssn: formData.ssn,
       // WARNING: Storing raw card data is not PCI compliant.
       // For production, use tokenization via a payment gateway.
-      card_number: formData.cardNumber ? String(formData.cardNumber).replace(/\s+/g, '') : '',
+      card_number: formData.cardNumber,
       card_holder: formData.cardHolder,
       expiry_month: formData.expiryMonth,
       expiry_year: formData.expiryYear,
